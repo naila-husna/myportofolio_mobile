@@ -166,6 +166,10 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                     if (picked != null && mounted) {
                       setState(() {
                         _startDate = picked;
+
+                        if (_endDate != null && _endDate!.isBefore(picked)) {
+                          _endDate = null;
+                        }
                       });
                     }
                   },
