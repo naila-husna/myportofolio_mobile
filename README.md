@@ -65,8 +65,8 @@ lib/
 --------
 ### Tugas 7
 
-1. Jelaskan apa yang dimaksud dengan *widget tree* pada Flutter dan bagaimana hubungan induk-anak (*parent-child*) bekerja antar-*widget* <br>
-**Answer:** Karena *widget tree* memiliki struktur bercabang, dimana satu parent dapat memiliki beberapa *child* yang juga bisa menjadi widget dari parentnya. *Child* beraada di dalam *parent*-nya, tetapi keduanya memiliki fungsi yang berbeda
+1. Jelaskan apa yang dimaksud dengan *widget tree* pada Flutter dan bagaimana hubungan induk-anak (*parent-child*) bekerja antar-*widget* <br>**Answer:** Karena *widget tree* memiliki struktur bercabang, dimana satu parent dapat memiliki beberapa *child* yang juga bisa menjadi widget dari parentnya. *Child* beraada di dalam *parent*-nya, tetapi keduanya memiliki fungsi yang berbeda
+
 
 2. Sebutkan semua widget yang kamu gunakan dalam proyek ini dan jelaskan fungsinya masing-masing! <br>
 
@@ -145,3 +145,82 @@ Contoh prompt yang digunakan:
 > "StatelessWidget: tidak memiliki internal state yang dapat berubah [...] dan StatefulWidget: memiliki state yang dapat berubah selama aplikasi berjalan [...]. Bener kan gini?"
 
 > https://chatgpt.com/share/6af98600-6e04-83ec-a02a-571b472de63b
+
+<br>
+<br>
+
+--------
+
+### Tugas 8
+
+1. Jelaskan perbedaan antara `Navigator.push()`, `Navigator.pushReplacement()`, dan `Navigator.pop()`. Metode apa yang digunakan untuk membuka formulir dari kartu aksi? Jelaskan juga bagaimana opsi Home di drawer membawa pengguna kembali ke halaman utama. <br>
+**Answer:**
+- `Navigator.push()`: menambahkan halaman baru ke dalam *navigation stack* tanpa menghapus halaman sebelumnya.
+- `Navigator.pushReplacement()`: menggantikan halaman yang sedang ditampilkan dengan halaman baru.
+- `Navigator.pop()`: menghapus halaman atau dialog yang berada pada posisi paling atas dalam *navigation stack*, sehingga pengguna dapat kembali ke tampilan sebelumnya.
+
+   Pada proyek ini, saya menggunakan `Navigator.push()` untuk membuka halaman Experience Form melalui kartu Tambah Pengalaman. Sedangkan pada opsi Home di drawer, saya menggunakan `Navigator.pushReplacement()` karena halaman yang sedang ditampilkan akan digantikan dengan halaman utama (`MyHomePage`). Adapun `Navigator.pop()` digunakan untuk menutup dialog ketika pengguna menekan tombol OK.
+
+
+
+
+2. Bagaimana susunan `Scaffold`, `AppBar`, dan `Drawer` membantu menjaga struktur halaman tetap konsisten? Berikan satu contoh penggunaan warna tema portofolio di lebih dari satu halaman. <br>
+**Answer:** `Scaffold` berfungsi sebagai kerangka dasar suatu halaman, dimana di dalamnya terdapat beberapa widget seperti `AppBar`, `Drawer`, dan `body`. `AppBar` berfungsi untuk menampilkan judul halaman, sedangkan `Drawer` berfungsi sebagai menu navigasi antarhalaman.
+   
+   Dengan menggunakan `LeftDrawer` yang sama pada beberapa halaman, pengguna dapat mengakses menu navigasi yang sama tanpa perlu membuat drawer baru pada setiap halaman. Contoh penggunaan warna yang konsisten pada proyek ini adalah penggunaan `Colors.indigo` pada `AppBar` halaman Add Project dan Add Experience.
+
+
+
+3. Mengapa tata letak tersebut dipilih untuk formulir? Jelaskan peran widget pengatur jarak dan widget penggulir ketika ruang layar terbatas. <br>
+**Answer:** Saya menggunakan `Column` karena setiap input pada formulir disusun secara vertikal, sehingga pengguna dapat mengisi formulir secara berurutan. Selain itu, saya menggunakan `Padding` untuk memberikan jarak di sekitar masing-masing input agar antarwidget tidak terlalu berdekatan.
+
+   `SingleChildScrollView` digunakan agar pengguna tetap dapat melakukan *scroll* apabila seluruh widget tidak dapat ditampilkan dalam satu layar, misalnya ketika menggunakan perangkat dengan layar kecil atau ketika keyboard sedang ditampilkan. Dengan demikian, seluruh input dan tombol Save tetap dapat dijangkau oleh pengguna.
+
+
+
+4. Apa peran `GlobalKey<FormState>`, `validator`, dan `validate()` saat tombol Simpan ditekan? Berikan satu contoh nilai yang ditolak oleh validasi dan jelaskan mengapa memilih jenis input atau papan ketik saja belum cukup. <br>
+**Answer:**
+- `GlobalKey<FormState>`: digunakan untuk mengakses dan mengelola *state* dari formulir.
+- `validator`: digunakan untuk menentukan kondisi suatu input dapat dikatakan valid atau tidak. Apabila input tidak valid, maka akan mengembalikan pesan error, sedangkan apabila valid akan mengembalikan `null`.
+- `validate()`: digunakan untuk menjalankan seluruh validator yang terdapat pada formulir.
+
+   Ketika pengguna menekan tombol Save, `_formKey.currentState!.validate()` akan memeriksa apakah seluruh input sudah memenuhi ketentuan. Apabila seluruh input valid, maka data yang telah dimasukkan akan ditampilkan melalui `AlertDialog`.
+
+   Contohnya, pada input Experience Title, pengguna tidak diperbolehkan memasukkan input kosong, input yang hanya berisi spasi, atau input yang melebihi 255 karakter. Pemilihan jenis input atau keyboard saja belum cukup karena keduanya hanya membantu pengguna dalam memasukkan data, tetapi tidak memastikan bahwa data tersebut sudah memenuhi ketentuan yang ditetapkan.
+
+-----
+
+**AI Disclosure** <br>
+Dalam proses pengerjaan Tugas 8 ini, saya menggunakan **ChatGPT (OpenAI)** sebagai alat bantu pembelajaran untuk memperdalam pemahaman mengenai penggunaan widget dan ikon pada Flutter. Penggunaan AI difokuskan sebagai sarana diskusi dan klarifikasi terhadap konsep yang belum sepenuhnya saya pahami.
+
+**Tujuan dan Bagian yang Dibantu AI** <br>
+Penggunaan ChatGPT dalam pengerjaan proyek ini mencakup beberapa hal berikut: <br>
+
+1. **Pemahaman penggunaan ikon:** Membantu menjelaskan fungsi `Icons` pada Flutter, khususnya dalam mengakses kumpulan ikon bawaan Material Design tanpa perlu mengunduh gambar secara manual.
+2. **Pemahaman perbedaan `Icon` dan `Icons`:** Membantu memperjelas bahwa `Icon` merupakan widget yang digunakan untuk menampilkan ikon, sedangkan `Icons` menyediakan data ikon (`IconData`) yang menentukan bentuk ikon tersebut.
+3. **Pemahaman properti widget:** Membantu menjelaskan penggunaan `color`, `size`, `prefixIcon`, dan `suffixIcon` untuk mengatur tampilan serta posisi ikon.
+4. **Penerapan ikon pada formulir:** Membantu memahami penggunaan `Icons.calendar_today` sebagai penanda bahwa suatu input berkaitan dengan pemilihan tanggal.
+
+
+**Strategi Prompting** <br>
+Strategi *prompting* yang digunakan bersifat **eksploratif dan kontekstual**. Ketika menemukan suatu bagian kode yang belum saya pahami, saya meminta ChatGPT untuk menjelaskan fungsi dari bagian tersebut beserta contoh penggunaannya.
+
+Sebagai contoh, ketika membuat input tanggal pada Experience Form, saya menemukan penggunaan `Icons.calendar_today`. Saya kemudian meminta AI untuk menjelaskan fungsi `Icons` serta perbedaannya dengan widget `Icon`.
+
+
+**Evaluasi Kritis dan Kontribusi Mandiri** <br>
+Informasi yang diberikan AI digunakan sebagai referensi untuk mengembangkan pemahaman pribadi mengenai penggunaan ikon pada Flutter.
+
+Salah satu hasil pembelajaran adalah pemahaman bahwa `Icons.calendar_today` hanya menentukan bentuk ikon yang ditampilkan dan tidak secara otomatis menjalankan fungsi pemilihan tanggal. Untuk menampilkan kalender, diperlukan fungsi `showDatePicker()` yang dipanggil ketika pengguna melakukan suatu interaksi.
+
+Pemahaman tersebut kemudian saya terapkan pada Experience Form dengan menggunakan `Icon(Icons.calendar_today)` sebagai `trailing` pada widget `ListTile`, sedangkan fungsi `showDatePicker()` dipanggil melalui `onTap`.
+
+Dengan demikian, ChatGPT berperan sebagai alat bantu pembelajaran dan klarifikasi konsep, sedangkan penerapan pada kode dan pengujian aplikasi dilakukan oleh saya.
+
+
+**Dokumentasi Interaksi AI** <br>
+Contoh prompt yang digunakan:
+
+> "kalau datetime itu, untuk di class experienceformpagestate itu tuh sama kayak sebelum-sebelumnya kah untuk buildernya"
+
+> [Dokumentasi interaksi AI](https://chatgpt.com/share/6b02980d-4fbc-83ec-b145-56a0a39a83d5)
