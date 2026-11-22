@@ -11,20 +11,19 @@ class ExperienceFormPage extends StatefulWidget {
 class _ExperienceFormPageState extends State<ExperienceFormPage> {
   final _formKey = GlobalKey<FormState>();
 
-  String _company = "";
+  String _title = "";
   String _position = "";
   String _description = "";
-  String _experienceType = "Organization";
-  DateTime? _startDate;
+  String _experienceType = "Full-Time";
   DateTime? _endDate;
 
   final List<String> _experienceTypes = [
-    'Organization',
     'Internship',
-    'Work',
+    'Research',
     'Volunteer',
-    'Committee',
-    'Other',
+    'Part-Time',
+    'Full-Time',
+    'Freelance',
   ];
 
   @override
@@ -48,7 +47,7 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                 child: TextFormField(
                   decoration: InputDecoration(
                     hintText: "Contoh: Software Engineer Intern",
-                    labelText: "Position / Role",
+                    labelText: "Position / Role (Optional)",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
                     ),
@@ -59,33 +58,36 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                     });
                   },
                   validator: (String? value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return "Position cannot be empty!";
+                    if (value != null && value.length > 255) {
+                      return "Position cannot exceed 255 characters!";
                     }
                     return null;
                   },
                 ),
               ),
 
-              // === Company / Organization ===
+              // === Experience Title ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
                   decoration: InputDecoration(
-                    hintText: "Contoh: COMPFEST",
-                    labelText: "Company / Organization",
+                    hintText: "Contoh: Internship at Google",
+                    labelText: "Experience Title",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _company = value ?? "";
+                      _title = value ?? "";
                     });
                   },
                   validator: (String? value) {
                     if (value == null || value.trim().isEmpty) {
-                      return "Company / Organization cannot be empty!";
+                      return "Experience title cannot be empty!";
+                    }
+                    if (value.length > 255) {
+                      return "Title cannot exceed 255 characters!";
                     }
                     return null;
                   },
@@ -145,61 +147,22 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                 ),
               ),
 
-              // === Start Date ===
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ListTile(
-                  title: Text(
-                    _startDate == null
-                        ? "Select Start Date"
-                        : "Start Date: ${_startDate!.day}/${_startDate!.month}/${_startDate!.year}",
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: _startDate ?? DateTime.now(),
-                      firstDate: DateTime(1950),
-                      lastDate: DateTime.now(),
-                    );
-
-                    if (picked != null && mounted) {
-                      setState(() {
-                        _startDate = picked;
-
-                        if (_endDate != null && _endDate!.isBefore(picked)) {
-                          _endDate = null;
-                        }
-                      });
-                    }
-                  },
-                ),
-              ),
-
-              // === end date ===
+              // === End Date ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: ListTile(
                   title: Text(
                     _endDate == null
-                        ? "Select End Date"
+                        ? "End Date (Optional)"
                         : "End Date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}",
                   ),
+                  subtitle: Text(_endDate == null ? "Present / Ongoing" : ""),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
-                    final DateTime firstAllowedDate =
-                        _startDate ?? DateTime(1950);
-
-                    final DateTime initialDate =
-                        _endDate != null &&
-                            !_endDate!.isBefore(firstAllowedDate)
-                        ? _endDate!
-                        : firstAllowedDate;
-
                     final DateTime? picked = await showDatePicker(
                       context: context,
-                      initialDate: initialDate,
-                      firstDate: firstAllowedDate,
+                      initialDate: _endDate ?? DateTime.now(),
+                      firstDate: DateTime(1950),
                       lastDate: DateTime.now(),
                     );
 
@@ -211,6 +174,15 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                   },
                 ),
               ),
+              if (_endDate != null)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _endDate = null;
+                    });
+                  },
+                  child: const Text("Clear End Date"),
+                ),
               // === Save Button ===
               Align(
                 alignment: Alignment.bottomCenter,
@@ -222,26 +194,6 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        if (_startDate == null || _endDate == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Please select both dates!"),
-                            ),
-                          );
-                          return;
-                        }
-
-                        if (_endDate!.isBefore(_startDate!)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "End Date cannot be earlier than Start Date!",
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
                         showDialog(
                           context: context,
                           builder: (context) {
@@ -253,14 +205,13 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Position: $_position'),
-                                    Text('Company: $_company'),
+                                    Text('Title: $_title'),
                                     Text('Experience Type: $_experienceType'),
                                     Text('Description: $_description'),
                                     Text(
-                                      'Start Date: ${_startDate!.day}/${_startDate!.month}/${_startDate!.year}',
-                                    ),
-                                    Text(
-                                      'End Date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
+                                      _endDate == null
+                                          ? 'End Date: Present'
+                                          : 'End Date: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
                                     ),
                                   ],
                                 ),
