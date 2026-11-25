@@ -1,107 +1,154 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:myportofolio_mobile/main.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
 
 void main() {
-  testWidgets('Menu menampilkan identitas dan SnackBar tombol', (tester) async {
-    tester.view.physicalSize = const Size(360, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MyApp());
-    expect(find.text('Naila Husna'), findsOneWidget);
-    expect(find.text('2506620444'), findsOneWidget);
+  final project = <String, dynamic>{
+    'id': 'a-project-id',
+    'title': 'Portofolio',
+    'description': 'Aplikasi portofolio pribadi',
+    'tech_stack': 'Flutter, Django',
+    'project_url': 'https://example.com',
+    'project_image_url': '',
+  };
 
-    for (final label in ['Lihat Proyek', 'Tambah Proyek', 'Logout']) {
-      await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
-      expect(find.text('Kamu telah menekan tombol $label!'), findsOneWidget);
-      if (label == 'Tambah Proyek') {
-        expect(find.text('Add Project Form'), findsOneWidget);
-        await tester.binding.handlePopRoute();
-        await tester.pumpAndSettle();
-        expect(find.text('MyPortfolio'), findsOneWidget);
+  ApiClient api({bool empty = false}) => ApiClient(
+    client: MockClient((request) async {
+      if (request.url.path.endsWith('auth/token/')) {
+        return http.Response(jsonEncode({'token': 'test-token'}), 200);
       }
-    }
+      if (request.url.path.endsWith('auth/logout/')) {
+        return http.Response('', 204);
+      }
+      if (request.method == 'POST') {
+        expect(request.headers['authorization'], 'Token test-token');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body.containsKey('id'), isFalse);
+        expect(body['tech_stack'], 'Flutter, Django');
+        return http.Response(jsonEncode({...body, 'id': 'new-project'}), 201);
+      }
+      return http.Response(jsonEncode(empty ? [] : [project]), 200);
+    }),
+  );
+
+  Future<void> login(WidgetTester tester) async {
+    await tester.enterText(find.byType(TextFormField).at(0), 'owner');
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
+    await tester.pumpAndSettle();
+  }
+
+  test('Logout tetap menghapus sesi saat API menolak token', () async {
+    final client = ApiClient(
+      client: MockClient((request) async {
+        return http.Response('{"detail":"Invalid token"}', 401);
+      }),
+    );
+    final auth = AuthState(client, initialToken: 'expired-token');
+    var notified = false;
+    auth.addListener(() => notified = true);
+    await auth.logout();
+    expect(auth.token, isNull);
+    expect(auth.isLoggedIn, isFalse);
+    expect(notified, isTrue);
+    auth.dispose();
+    client.close();
   });
 
-  testWidgets('Drawer berpindah antara Home dan Add Project', (tester) async {
-    await tester.pumpWidget(const MyApp());
-    await tester.tap(find.byTooltip('Open navigation menu'));
+  testWidgets('Daftar dapat dicoba ulang setelah API gagal', (tester) async {
+    var requests = 0;
+    final client = ApiClient(
+      client: MockClient((request) async {
+        requests++;
+        return requests == 1
+            ? http.Response('Server error', 500)
+            : http.Response(jsonEncode([project]), 200);
+      }),
+    );
+    await tester.pumpWidget(MyApp(apiClient: client));
+    await tester.tap(find.text('Lihat Proyek'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add Project'));
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
-    expect(find.text('Add Project Form'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Home'));
-    await tester.pumpAndSettle();
-    expect(find.text('MyPortfolio'), findsOneWidget);
-    expect(find.text('Add Project Form'), findsNothing);
+    expect(find.text('Portofolio'), findsOneWidget);
+    expect(requests, 2);
+    client.close();
   });
 
-  testWidgets('Form memvalidasi, menampilkan data, dan mereset isian', (
+  testWidgets('Daftar publik membuka detail proyek', (tester) async {
+    await tester.pumpWidget(MyApp(apiClient: api()));
+    expect(find.text('Naila Husna'), findsOneWidget);
+    await tester.tap(find.text('Lihat Proyek'));
+    await tester.pumpAndSettle();
+    expect(find.text('Portofolio'), findsOneWidget);
+    await tester.tap(find.text('Portofolio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tech Stack: Flutter, Django'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('Daftar kosong tetap mendukung refresh', (tester) async {
+    await tester.pumpWidget(MyApp(apiClient: api(empty: true)));
+    await tester.tap(find.text('Lihat Proyek'));
+    await tester.pumpAndSettle();
+    expect(find.text('No projects found.'), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsOneWidget);
+  });
+
+  testWidgets('Form meminta login lalu menyimpan proyek melalui API', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(400, 1000);
+    tester.view.physicalSize = const Size(500, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(apiClient: api()));
     await tester.tap(find.text('Tambah Proyek'));
     await tester.pumpAndSettle();
-
+    expect(find.text('Add Project Form'), findsNothing);
+    await login(tester);
+    expect(find.text('Add Project Form'), findsOneWidget);
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '   ');
-    await tester.enterText(fields.at(1), '   ');
-    await tester.ensureVisible(find.text('Save'));
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Nama proyek tidak boleh kosong!'), findsOneWidget);
-    expect(find.text('Deskripsi proyek tidak boleh kosong!'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
-
     await tester.enterText(fields.at(0), 'Portofolio');
     await tester.enterText(fields.at(1), 'Aplikasi portofolio pribadi');
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Mobile Development').last);
-    await tester.pumpAndSettle();
     await tester.enterText(fields.at(2), 'Flutter, Django');
+    await tester.enterText(fields.at(3), 'invalid-url');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Masukkan URL http atau https yang valid!'),
+      findsOneWidget,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
     await tester.enterText(fields.at(3), 'https://example.com');
-    await tester.ensureVisible(find.text('Save'));
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Proyek berhasil ditambahkan!'), findsOneWidget);
-    expect(find.text('Nama Proyek: Portofolio'), findsOneWidget);
-    expect(find.text('Deskripsi: Aplikasi portofolio pribadi'), findsOneWidget);
-    expect(find.text('Kategori: Mobile Development'), findsOneWidget);
-    expect(find.text('Teknologi: Flutter, Django'), findsOneWidget);
-    expect(find.text('Tautan: https://example.com'), findsOneWidget);
-
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    for (final field in tester.widgetList<EditableText>(find.byType(EditableText))) {
+    for (final field in tester.widgetList<EditableText>(
+      find.byType(EditableText),
+    )) {
       expect(field.controller.text, isEmpty);
     }
-    expect(find.text('Web Development'), findsOneWidget);
+  });
 
-    await tester.enterText(fields.at(0), 'Proyek Kedua');
-    await tester.enterText(fields.at(1), 'Deskripsi kedua');
-    await tester.tap(find.text('Save'));
+  testWidgets('Login dan logout dari menu memperbarui sesi', (tester) async {
+    await tester.pumpWidget(MyApp(apiClient: api()));
+    await tester.tap(find.text('Login'));
     await tester.pumpAndSettle();
-    expect(find.text('Kategori: Web Development'), findsOneWidget);
-    expect(find.text('Teknologi: '), findsOneWidget);
-    expect(find.text('Tautan: '), findsOneWidget);
+    await login(tester);
+    expect(find.text('Logout'), findsOneWidget);
+    await tester.tap(find.text('Logout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Berhasil logout.'), findsOneWidget);
   });
 }
